@@ -8,6 +8,8 @@ const sintomasInput = document.querySelector('#sintomas');
 //User interface
 const formulario = document.querySelector('#nueva-cita');
 const contenedorCitas = document.querySelector('#citas');
+//Modo edicion
+let edicion;
 //Event listenters
 eventListeners();
 function eventListeners() {
@@ -41,21 +43,63 @@ function nuevaCita(e) {
   //validar
   if (!mascota || !propietario || !telefono || !fecha || !hora || !sintomas) {
     ui.imprimirAlerta('Todos los campos son obligatorios', 'error');
-
     return;
-  } else {
-    console.log('enviar datos');
   }
-  //Generar un ID para cada cita
-  citaObj.id = Date.now();
-  //Creando nueva cita
-  administrarCitas.agregarCita({...citaObj});
+  if (edicion) {
+    ui.imprimirAlerta('Cita editada correctamente', 'success');
+    //Obtener objeto de la cita
+    administrarCitas.editarCita({...citaObj});
+    //Cambiar texto boton a inicial
+    formulario.querySelector('button[type=submit]').textContent = 'Crear Cita';
+    //quitar modo edicion
+    edicion = false;
+  } else {
+    //Generar un ID para cada cita
+    citaObj.id = Date.now();
+    //Creando nueva cita
+    administrarCitas.agregarCita({...citaObj});
+    //Mensaje de agregado correctamente
+    ui.imprimirAlerta('Cita agregada correctamente', 'success');
+  }
   //reset formulario
   formulario.reset();
   //Vaciar objeto citas
   reiniciarObjeto();
   //Mostrar citas en el DOM
   ui.imprimirCitas(administrarCitas);
+}
+//Elimina una cita
+function eliminarCita(id) {
+  //Eliminar cita
+  administrarCitas.eliminarCita(id);
+  //Mostrar mensaje
+  ui.imprimirAlerta('La cita se ha eliminado correctamente', 'success');
+  //Refrescar el HTML de citas
+  ui.imprimirCitas(administrarCitas);
+}
+//Carga los datos y el modo edicion
+function cargarEdicion(cita) {
+  const {mascota, propietario, telefono, fecha, hora, sintomas, id} = cita;
+  //lenar los inputs
+  mascotaInput.value = mascota;
+  propietarioInput.value = propietario;
+  telefonoInput.value = telefono;
+  fechaInput.value = fecha;
+  horaInput.value = hora;
+  sintomasInput.value = sintomas;
+  //llenar Objeto
+  citaObj.mascota = mascota;
+  citaObj.propietario = propietario;
+  citaObj.telefono = telefono;
+  citaObj.fecha = fecha;
+  citaObj.hora = hora;
+  citaObj.sintomas = sintomas;
+  citaObj.id = id;
+  //Modo edicion
+  formulario.querySelector('button[type=submit]').textContent =
+    'Guardar Cambios';
+  edicion = true;
+  //
 }
 function reiniciarObjeto() {
   citaObj.mascota = '';
@@ -72,7 +116,14 @@ class Citas {
   }
   agregarCita(cita) {
     this.citas = [...this.citas, cita];
-    console.log(this.citas);
+  }
+  eliminarCita(id) {
+    this.citas = this.citas.filter(cita => cita.id !== id);
+  }
+  editarCita(citaActualizada) {
+    this.citas = this.citas.map(cita =>
+      cita.id === citaActualizada.id ? citaActualizada : cita
+    );
   }
 }
 class UI {
@@ -96,7 +147,7 @@ class UI {
     }, 3000);
   }
   imprimirCitas({citas}) {
-    console.log(citas);
+    this.limpiarHTML();
     citas.forEach(cita => {
       const {mascota, propietario, telefono, fecha, hora, sintomas, id} = cita;
       const divCita = document.createElement('div');
@@ -134,14 +185,14 @@ class UI {
       `;
       //Boton Eliminar
       const botonEliminar = document.createElement('button');
-      botonEliminar.dataset.id = id;
       botonEliminar.classList.add('btn', 'btn-danger');
       botonEliminar.innerText = 'Eliminar';
+      botonEliminar.onclick = () => eliminarCita(id);
       //Boton Editar
       const botonEditar = document.createElement('button');
-      botonEditar.dataset.id = id;
-      botonEditar.classList.add('btn', 'btn-primary');
+      botonEditar.classList.add('btn', 'btn-primary', 'mr-1');
       botonEditar.innerText = 'Editar';
+      botonEditar.onclick = () => cargarEdicion(cita);
       //agregar parrafos al div cita
       divCita.appendChild(mascotaParrafo);
       divCita.appendChild(propietarioParrafo);
@@ -154,6 +205,11 @@ class UI {
       //agregar las citas el HTML
       contenedorCitas.appendChild(divCita);
     });
+  }
+  limpiarHTML() {
+    while (contenedorCitas.firstChild) {
+      contenedorCitas.removeChild(contenedorCitas.firstChild);
+    }
   }
 }
 //instancias globales
